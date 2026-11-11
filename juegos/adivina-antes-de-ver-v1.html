@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Adiviná antes de ver</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Public+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  /* Layout: pregunta arriba; abajo, opciones a la izquierda y un panel de datos tapado a la derecha.
+     El panel se destapa recién cuando el público apuesta. */
+  --paper:#F3F6F9; --card:#FFFFFF; --ink:#0F2747; --ink-2:#51627A; --grid:#E1E8EF;
+  --up:#0B7A84; --up-bg:#D9EFF1; --down:#C73E14; --down-bg:#FADFD6; --dot:#8FA6C0; --tape-a:#0F2747; --tape-b:#1A3B66;
+  --display:'Bricolage Grotesque','Arial Narrow',system-ui,sans-serif;
+  --body:'Public Sans',system-ui,-apple-system,'Segoe UI',sans-serif;
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background-color:var(--paper);
+  background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);
+  background-size:44px 44px;color:var(--ink);font-family:var(--body);font-size:17px;line-height:1.45}
+#app{min-height:100%;display:flex;flex-direction:column}
+button{font:inherit;color:inherit}
+:focus-visible{outline:4px solid var(--ink);outline-offset:3px}
+
+.top{display:flex;align-items:center;gap:clamp(12px,2vw,28px);padding:14px clamp(16px,3vw,40px);background:var(--card);border-bottom:2px solid var(--ink);flex-wrap:wrap}
+.brand{font-family:var(--display);font-weight:800;font-size:26px;line-height:1.05;letter-spacing:-.015em}
+.brand small{display:block;font-family:var(--body);font-weight:500;font-size:14px;color:var(--ink-2);letter-spacing:0;margin-top:2px}
+.progress{flex:1;display:flex;gap:6px;justify-content:center;min-width:140px}
+.seg{width:clamp(22px,4vw,52px);height:12px;border-radius:6px;background:var(--grid);border:2px solid var(--grid)}
+.seg.cur{background:var(--card);border-color:var(--ink)}
+.seg.ok{background:var(--up);border-color:var(--up)}
+.seg.no{background:var(--down);border-color:var(--down)}
+.score{font-family:var(--display);font-weight:700;font-size:19px;text-align:right;white-space:nowrap;min-height:38px}
+.score b{font-size:34px;font-weight:800;letter-spacing:-.02em}
+
+main{flex:1;width:min(1200px,100%);margin:0 auto;padding:clamp(16px,2.4vw,28px) clamp(16px,3vw,40px) 30px;display:flex;flex-direction:column;gap:clamp(14px,2vw,22px)}
+
+.q{font-family:var(--display);font-weight:800;font-size:clamp(28px,4.1vw,54px);line-height:1.04;letter-spacing:-.025em;margin:0;text-wrap:balance;max-width:26ch}
+.play{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,6fr);gap:clamp(14px,2.2vw,30px);align-items:start}
+.opts{display:flex;flex-direction:column;gap:12px}
+.opts-cap{margin:0;font-weight:600;color:var(--ink-2);font-size:17px}
+.opt{display:grid;grid-template-columns:48px 1fr auto auto;gap:14px;align-items:center;text-align:left;background:var(--card);border:0;border-radius:12px;padding:12px 16px 12px 12px;box-shadow:0 0 0 2px var(--ink);cursor:pointer;font-family:var(--display);font-weight:700;font-size:clamp(20px,2.5vw,31px);line-height:1.1;transition:transform .12s,box-shadow .12s,opacity .2s}
+.opt:hover:not(:disabled){transform:translateY(-2px);box-shadow:0 0 0 2px var(--ink),0 6px 0 0 var(--ink)}
+.opt:disabled{cursor:default}
+.ltr{display:grid;place-items:center;width:48px;height:48px;border-radius:10px;background:var(--ink);color:#fff;font-weight:800;font-size:26px}
+.tag{font-family:var(--body);font-weight:600;font-size:14px;color:var(--ink);background:var(--grid);border-radius:999px;padding:3px 10px;white-space:nowrap}
+.mark svg{width:32px;height:32px;display:block}
+.opt.ok{background:var(--up-bg);box-shadow:0 0 0 3px var(--up);color:var(--up)}
+.opt.ok .ltr{background:var(--up)}
+.opt.no{background:var(--down-bg);box-shadow:0 0 0 3px var(--down);color:var(--down)}
+.opt.no .ltr{background:var(--down)}
+.opt.dim{opacity:.5}
+
+/* panel tapado */
+.evi{position:relative;background:var(--card);border-radius:14px;box-shadow:0 0 0 2px var(--ink);overflow:hidden;min-height:330px}
+.evi h2{margin:0;padding:14px 18px 0;font-family:var(--body);font-weight:600;font-size:16px;color:var(--ink-2)}
+.evi svg{display:block;width:100%;height:auto}
+.cover{position:absolute;inset:0;z-index:5;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;text-align:center;color:#fff;padding:20px;
+  background:repeating-linear-gradient(135deg,var(--tape-a) 0 16px,var(--tape-b) 16px 32px);transition:transform .9s cubic-bezier(.7,0,.2,1)}
+.cover svg{width:56px;height:56px}
+.cover b{font-family:var(--display);font-weight:800;font-size:clamp(26px,3vw,38px);line-height:1.05}
+.cover span{font-size:clamp(16px,1.7vw,19px);max-width:26ch}
+.evi.open .cover{transform:translateY(-102%)}
+.evi.snap .cover{transition:none}
+.t{fill:var(--ink)} .t2{fill:var(--ink-2)}
+.gl{stroke:var(--grid);stroke-width:1.5}
+.ax{stroke:var(--ink);stroke-width:2}
+
+.result{--c:var(--up);display:grid;grid-template-columns:1.05fr 1.5fr auto;gap:clamp(12px,2vw,28px);align-items:center;background:var(--card);border-radius:14px;padding:clamp(14px,2vw,22px) clamp(14px,2vw,24px);box-shadow:0 0 0 2px var(--ink);border-left:12px solid var(--c)}
+.result.no{--c:var(--down)}
+.verdict{display:flex;align-items:center;gap:10px;font-family:var(--display);font-weight:800;font-size:clamp(23px,2.6vw,33px);line-height:1.1;color:var(--c);margin:0}
+.verdict svg{width:36px;height:36px;flex:none}
+.answer{margin:6px 0 0;font-size:clamp(16px,1.8vw,20px)}
+.note{margin:0;font-size:clamp(16px,1.7vw,19px);line-height:1.5;max-width:60ch}
+.btn{display:flex;align-items:center;justify-content:center;gap:14px;border:0;border-radius:14px;padding:16px 26px;font-family:var(--display);font-weight:800;font-size:clamp(20px,2.2vw,26px);color:#fff;background:var(--ink);cursor:pointer;line-height:1;transition:transform .12s,filter .12s}
+.btn:hover{filter:brightness(1.12);transform:translateY(-2px)}
+.btn.light{background:var(--card);color:var(--ink);box-shadow:0 0 0 2px var(--ink)}
+.btn.big{font-size:clamp(26px,3.2vw,40px);padding:clamp(18px,2.4vw,26px) clamp(28px,4vw,48px)}
+
+.hero h1{font-family:var(--display);font-weight:800;font-size:clamp(46px,9vw,112px);line-height:.92;letter-spacing:-.04em;margin:0 0 14px;text-wrap:balance}
+.lede{font-size:clamp(18px,2vw,23px);max-width:46ch;margin:0}
+.how{display:grid;grid-template-columns:repeat(3,1fr);gap:clamp(12px,2vw,28px);margin:0;padding:0;list-style:none;counter-reset:s}
+.how li{counter-increment:s;background:var(--card);border-radius:12px;padding:16px 18px 16px 62px;position:relative;box-shadow:0 0 0 2px var(--grid);font-size:18px}
+.how li::before{content:counter(s);position:absolute;left:16px;top:14px;width:34px;height:34px;border-radius:50%;background:var(--ink);color:#fff;display:grid;place-items:center;font-family:var(--display);font-weight:800;font-size:19px}
+.demo{position:relative;height:120px;border-radius:14px;box-shadow:0 0 0 2px var(--ink);overflow:hidden;background:repeating-linear-gradient(135deg,var(--tape-a) 0 16px,var(--tape-b) 16px 32px);display:flex;align-items:center;justify-content:center;gap:14px;color:#fff;font-family:var(--display);font-weight:800;font-size:clamp(22px,3vw,34px)}
+.demo svg{width:44px;height:44px}
+.src{font-size:14px;color:var(--ink-2);margin:0}
+
+.final{display:flex;align-items:baseline;gap:18px;flex-wrap:wrap}
+.final .n{font-family:var(--display);font-weight:800;font-size:clamp(72px,14vw,170px);line-height:.9;letter-spacing:-.04em}
+.final .tt{font-family:var(--display);font-weight:700;font-size:clamp(24px,3vw,38px);line-height:1.15;max-width:22ch}
+.recap{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.recap li{display:grid;grid-template-columns:34px 1fr auto;gap:14px;align-items:center;background:var(--card);border-radius:10px;padding:10px 16px;box-shadow:0 0 0 2px var(--grid)}
+.recap .k{font-family:var(--display);font-weight:800;font-size:20px;color:var(--ink-2)}
+.recap .v{display:flex;align-items:center;gap:8px;font-weight:600;white-space:nowrap}
+.recap .v svg{width:22px;height:22px}
+.recap .ok{color:var(--up)} .recap .no{color:var(--down)}
+.row-actions{display:flex;gap:14px;flex-wrap:wrap}
+
+@media (max-width:860px){
+  .play{grid-template-columns:1fr}
+  .result{grid-template-columns:1fr}
+  .how{grid-template-columns:1fr}
+  .recap li{grid-template-columns:28px 1fr}
+  .recap .v{grid-column:2}
+  .progress{order:3;flex-basis:100%}
+  .opt{grid-template-columns:44px 1fr auto}
+  .opt .tag{display:none}
+}
+@media (prefers-reduced-motion:reduce){.cover{transition:none}.btn,.opt{transition:none}}
+</style>
+</head>
+<body>
+<div id="app">
+  <header class="top">
+    <div class="brand">Adiviná antes de ver<small>Natalidad en Argentina, 2000–2024</small></div>
+    <div class="progress" id="progress" aria-label="Progreso del juego"></div>
+    <div class="score" id="score" aria-live="polite"></div>
+  </header>
+  <main id="stage"></main>
+</div>
+
+<script>
+const DATA = {"years": [2000, 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024], "s": {"argentina": [19.0, 18.2, 18.3, 18.4, 19.3, 18.5, 17.9, 17.8, 18.8, 18.6, 18.7, 18.5, 17.9, 17.9, 18.2, 17.9, 16.7, 16.0, 15.4, 13.9, 11.8, 11.6, 10.7, 9.9, 8.9], "ciudad_autonoma_de_buenos_aires": [14.3, 13.9, 13.6, 14.2, 14.9, 14.5, 14.6, 14.1, 15.1, 14.6, 14.9, 14.8, 14.2, 14.3, 14.3, 13.7, 13.1, 11.7, 11.6, 11.1, 9.1, 8.5, 8.0, 7.8, 6.9], "buenos_aires": [17.5, 16.9, 17.0, 17.3, 18.5, 17.9, 17.7, 17.7, 18.6, 18.4, 18.9, 18.8, 18.1, 17.8, 17.9, 17.3, 16.2, 15.4, 14.6, 13.1, 10.9, 10.7, 9.7, 9.0, 8.4], "catamarca": [25.8, 24.9, 24.4, 22.5, 20.6, 19.7, 18.3, 18.3, 18.6, 17.4, 16.9, 16.0, 15.0, 16.9, 17.4, 17.2, 16.7, 15.8, 16.4, 13.9, 11.9, 11.4, 11.3, 10.0, 8.8], "cordoba": [17.2, 15.9, 16.6, 17.5, 17.8, 17.1, 16.5, 16.3, 17.4, 17.4, 17.2, 16.9, 16.5, 16.0, 16.8, 16.4, 15.7, 15.0, 14.5, 13.7, 11.8, 11.6, 10.8, 9.8, 8.6], "corrientes": [22.7, 21.9, 23.3, 22.2, 22.7, 20.2, 18.7, 18.9, 19.7, 19.9, 19.8, 19.9, 18.6, 19.0, 19.8, 19.3, 18.5, 18.3, 18.0, 16.3, 14.8, 13.9, 12.6, 12.4, 10.5], "chaco": [25.8, 22.2, 24.9, 20.9, 25.1, 22.6, 19.6, 18.4, 20.8, 20.4, 21.2, 22.6, 20.2, 19.9, 20.2, 22.7, 19.1, 19.8, 21.0, 18.6, 15.3, 15.4, 14.7, 13.5, 11.9], "chubut": [19.4, 18.4, 17.1, 18.7, 19.3, 19.2, 20.0, 20.2, 21.4, 21.3, 21.2, 20.7, 20.2, 18.5, 17.8, 17.4, 16.6, 15.3, 14.3, 12.9, 11.3, 10.2, 9.6, 8.4, 8.4], "entre_rios": [21.3, 20.5, 19.5, 19.8, 19.5, 19.0, 17.2, 16.9, 17.2, 17.5, 17.4, 17.2, 16.7, 17.3, 17.8, 17.8, 16.6, 16.3, 15.6, 14.0, 12.3, 11.7, 10.7, 9.9, 8.6], "formosa": [25.7, 22.4, 25.1, 25.0, 26.5, 23.5, 21.4, 21.1, 22.6, 21.9, 21.1, 21.6, 21.0, 21.0, 21.8, 21.3, 19.4, 19.6, 19.8, 17.1, 15.2, 14.5, 13.8, 13.3, 10.7], "jujuy": [22.6, 23.1, 22.1, 20.3, 21.3, 19.9, 18.4, 18.6, 19.1, 19.2, 19.2, 19.6, 18.0, 18.5, 19.5, 18.2, 16.8, 15.8, 15.7, 13.6, 11.9, 10.8, 9.9, 9.3, 8.0], "la_pampa": [18.1, 17.2, 16.7, 18.3, 17.4, 16.9, 16.5, 16.2, 16.5, 16.3, 16.2, 15.6, 15.4, 16.8, 16.5, 15.1, 15.1, 14.3, 13.5, 12.1, 10.4, 9.9, 9.6, 8.8, 8.1], "la_rioja": [22.6, 20.5, 21.4, 21.2, 21.1, 20.8, 19.0, 18.4, 19.0, 17.9, 17.2, 17.4, 17.0, 17.5, 17.3, 17.1, 16.6, 15.6, 14.8, 13.7, 11.6, 11.6, 10.9, 10.2, 8.7], "mendoza": [19.2, 19.1, 16.9, 17.5, 18.4, 18.8, 19.0, 19.3, 20.2, 19.7, 19.3, 19.2, 18.4, 18.7, 19.4, 18.8, 17.5, 16.3, 15.4, 13.9, 11.8, 11.4, 10.5, 9.8, 9.1], "misiones": [25.8, 24.2, 22.9, 24.1, 26.4, 23.0, 19.9, 20.4, 23.1, 23.7, 22.2, 19.3, 22.3, 22.0, 23.4, 22.8, 21.0, 21.1, 20.2, 18.4, 16.8, 16.1, 15.2, 14.5, 12.3], "neuquen": [17.9, 16.8, 16.1, 19.4, 19.8, 20.0, 20.5, 20.5, 21.0, 20.9, 21.6, 19.6, 19.1, 18.7, 19.5, 19.1, 17.9, 16.3, 15.6, 14.4, 12.3, 11.6, 11.0, 10.0, 9.7], "rio_negro": [18.9, 17.8, 17.3, 18.6, 18.3, 18.7, 18.6, 18.9, 19.9, 19.6, 20.0, 19.8, 19.4, 17.9, 17.9, 18.2, 16.8, 16.0, 14.6, 13.3, 11.6, 10.6, 10.5, 9.5, 8.6], "salta": [24.0, 24.2, 24.7, 22.0, 23.9, 22.5, 21.0, 20.6, 21.4, 21.0, 21.9, 21.7, 20.2, 21.1, 21.6, 21.3, 19.4, 19.7, 18.2, 16.3, 12.7, 14.1, 12.8, 11.5, 9.7], "san_juan": [22.7, 23.7, 22.3, 22.2, 22.5, 21.4, 20.7, 20.8, 20.7, 20.6, 19.8, 19.9, 19.6, 20.6, 21.3, 20.5, 18.8, 18.1, 17.7, 16.2, 14.0, 14.1, 13.1, 12.2, 10.3], "san_luis": [22.3, 22.3, 22.0, 21.7, 21.9, 19.9, 20.2, 19.3, 19.3, 18.2, 17.4, 16.7, 16.0, 16.7, 16.9, 17.0, 15.5, 14.8, 14.2, 13.2, 11.8, 11.7, 10.7, 9.4, 8.3], "santa_cruz": [19.6, 19.8, 19.2, 21.9, 22.4, 22.9, 23.5, 23.8, 25.0, 25.2, 26.0, 25.0, 24.0, 19.7, 19.8, 19.8, 18.6, 17.0, 14.7, 13.3, 11.3, 9.4, 9.5, 8.0, 8.1], "santa_fe": [16.9, 16.2, 16.7, 17.3, 17.6, 16.3, 15.8, 15.7, 16.9, 16.5, 16.2, 16.4, 16.3, 16.9, 17.2, 16.9, 16.3, 15.4, 14.8, 13.4, 11.2, 12.2, 11.5, 10.4, 9.2], "santiago_del_estero": [21.6, 21.1, 22.1, 17.8, 19.7, 21.0, 20.0, 19.4, 20.5, 21.9, 19.9, 20.2, 17.9, 18.8, 19.8, 20.5, 18.7, 18.8, 18.9, 17.5, 14.0, 13.8, 11.7, 11.8, 10.8], "tucuman": [22.6, 21.1, 22.6, 21.8, 21.0, 19.9, 18.5, 19.7, 19.9, 19.1, 20.1, 19.5, 18.7, 18.9, 19.3, 19.0, 17.5, 16.7, 16.9, 15.0, 12.8, 12.8, 11.9, 10.6, 9.4], "tierra_del_fuego": [19.9, 17.9, 17.2, 20.8, 19.5, 20.7, 20.1, 20.8, 20.8, 20.2, 18.8, 18.6, 19.2, 19.8, 20.5, 19.9, 18.1, 16.9, 16.3, 14.2, 10.9, 9.9, 8.5, 7.7, 6.9]}, "names": {"argentina": "Argentina", "ciudad_autonoma_de_buenos_aires": "Ciudad de Buenos Aires", "buenos_aires": "Buenos Aires", "catamarca": "Catamarca", "cordoba": "Córdoba", "corrientes": "Corrientes", "chaco": "Chaco", "chubut": "Chubut", "entre_rios": "Entre Ríos", "formosa": "Formosa", "jujuy": "Jujuy", "la_pampa": "La Pampa", "la_rioja": "La Rioja", "mendoza": "Mendoza", "misiones": "Misiones", "neuquen": "Neuquén", "rio_negro": "Río Negro", "salta": "Salta", "san_juan": "San Juan", "san_luis": "San Luis", "santa_cruz": "Santa Cruz", "santa_fe": "Santa Fe", "santiago_del_estero": "Santiago del Estero", "tucuman": "Tucumán", "tierra_del_fuego": "Tierra del Fuego"}};
+const S = DATA.s, Y = DATA.years, NAMES = DATA.names;
+const mean = a => a.reduce((x, y) => x + y, 0) / a.length;
+const median = a => { const s = [...a].sort((x, y) => x - y), n = s.length; return n % 2 ? s[(n - 1) / 2] : (s[n / 2 - 1] + s[n / 2]) / 2; };
+const r1 = x => Math.round(x * 10) / 10;
+const fmt = (v, d) => v.toFixed(d).replace('.', ',');
+const A = S.argentina, N = A.length;
+const mA = mean(A), medA = median(A);
+const maxV = Math.max(...A), minV = Math.min(...A);
+const maxY = Y[A.indexOf(maxV)], minY = Y[A.indexOf(minV)];
+const rank = Object.keys(S).filter(k => k !== 'argentina').map(k => [k, mean(S[k])]).sort((a, b) => b[1] - a[1]);
+const nIn = (lo, hi) => A.filter(v => v >= lo - 1e-9 && v < hi - 1e-9).length;
+const pct = nIn(18, 20) / N * 100, nLow = A.filter(v => v < 16).length;
+const diffs = A.map((v, i) => i ? r1(v - A[i - 1]) : null);
+let run = 0; for (let i = N - 1; i >= 1 && diffs[i] < 0; i--) run++;
+const runFrom = Y[N - run];
+const worstI = diffs.reduce((b, d, i) => (i && d < diffs[b] ? i : b), 1);
+
+/* ---------- gráficos SVG (600 x 330), todos calculados desde los datos ---------- */
+const svgOpen = '<svg viewBox="0 0 600 330" role="img" aria-label="Gráfico con los datos reales del archivo" xmlns="http://www.w3.org/2000/svg" font-family="Public Sans,system-ui,sans-serif">';
+function chartDots(){
+  const x = v => 40 + (v - 8) / 12 * 530, base = 262, bins = {};
+  let g = svgOpen;
+  for (let t = 8; t <= 20; t += 2) g += '<line class="gl" x1="'+x(t)+'" x2="'+x(t)+'" y1="40" y2="'+base+'"/><text class="t2" x="'+x(t)+'" y="288" font-size="15" text-anchor="middle">'+fmt(t,0)+'</text>';
+  g += '<line class="ax" x1="30" x2="580" y1="'+base+'" y2="'+base+'"/>';
+  A.forEach(v => { const k = Math.round(v * 2) / 2; bins[k] = (bins[k] || 0) + 1; g += '<circle cx="'+x(k)+'" cy="'+(base - 11 - (bins[k] - 1) * 19)+'" r="8.5" fill="#8FA6C0" stroke="#fff" stroke-width="1.5"/>'; });
+  const left = mA < medA, lab = (v, txt, col, dash, anchorLeft) =>
+    '<line x1="'+x(v)+'" x2="'+x(v)+'" y1="62" y2="'+base+'" stroke="'+col+'" stroke-width="3.5" '+(dash?'stroke-dasharray="8 6"':'')+'/>'
+    + '<text x="'+(x(v)+(anchorLeft?-8:8))+'" y="58" font-size="17" font-weight="700" fill="'+col+'" text-anchor="'+(anchorLeft?'end':'start')+'">'+txt+'</text>';
+  g += lab(mA, 'Media '+fmt(mA,2), '#C73E14', true, left) + lab(medA, 'Mediana '+fmt(medA,1), '#0B7A84', false, !left);
+  return g + '<text class="t2" x="305" y="315" font-size="14" text-anchor="middle">Tasa de natalidad por 1.000 hab.</text></svg>';
+}
+function chartLine(){
+  const x = i => 52 + i / (N - 1) * 520, y = v => 285 - (v - 6) / 15 * 245;
+  let g = svgOpen;
+  [8, 12, 16, 20].forEach(t => g += '<line class="gl" x1="44" x2="580" y1="'+y(t)+'" y2="'+y(t)+'"/><text class="t2" x="36" y="'+(y(t)+5)+'" font-size="14" text-anchor="end">'+t+'</text>');
+  Y.forEach((yr, i) => { if ((yr - 2000) % 4 === 0) g += '<text class="t2" x="'+x(i)+'" y="310" font-size="14" text-anchor="middle">'+yr+'</text>'; });
+  g += '<polyline fill="none" stroke="#0F2747" stroke-width="3.5" stroke-linejoin="round" points="'+A.map((v, i) => x(i)+','+y(v)).join(' ')+'"/>';
+  A.forEach((v, i) => g += '<circle cx="'+x(i)+'" cy="'+y(v)+'" r="3.5" fill="#0F2747"/>');
+  const iM = A.indexOf(maxV), iN = A.indexOf(minV);
+  g += '<circle cx="'+x(iM)+'" cy="'+y(maxV)+'" r="11" fill="none" stroke="#0B7A84" stroke-width="4"/><text x="'+(x(iM)+16)+'" y="'+(y(maxV)-10)+'" font-size="18" font-weight="800" fill="#0B7A84">Máximo: '+fmt(maxV,1)+' en '+maxY+'</text>';
+  g += '<circle cx="'+x(iN)+'" cy="'+y(minV)+'" r="11" fill="none" stroke="#C73E14" stroke-width="4"/><text x="'+(x(iN)-16)+'" y="'+(y(minV)-14)+'" font-size="18" font-weight="800" fill="#C73E14" text-anchor="end">Mínimo: '+fmt(minV,1)+' en '+minY+'</text>';
+  return g + '</svg>';
+}
+function chartRank(){
+  const rows = rank.slice(0, 5).map((r, i) => ({ r, i })).concat([null], rank.slice(-3).map((r, i) => ({ r, i: rank.length - 3 + i })));
+  const x0 = 200, sc = v => v / 24 * 370; let g = svgOpen, yy = 18;
+  rows.forEach(o => {
+    if (!o){ g += '<text class="t2" x="'+x0+'" y="'+(yy+12)+'" font-size="18">· · ·</text>'; yy += 26; return; }
+    const [k, v] = o.r, top = o.i === 0, low = o.i === rank.length - 1;
+    const col = top ? '#0B7A84' : low ? '#C73E14' : '#8FA6C0';
+    g += '<text class="t" x="190" y="'+(yy+18)+'" font-size="16" font-weight="'+(top||low?800:500)+'" text-anchor="end">'+NAMES[k]+'</text>'
+      + '<rect x="'+x0+'" y="'+yy+'" width="'+sc(v)+'" height="26" rx="4" fill="'+col+'"/>'
+      + '<text class="t" x="'+(x0+sc(v)+8)+'" y="'+(yy+19)+'" font-size="16" font-weight="800">'+fmt(v,2)+'</text>';
+    yy += 34;
+  });
+  return g + '<text class="t2" x="'+x0+'" y="318" font-size="14">Tasa media 2000–2024, por 1.000 hab.</text></svg>';
+}
+function chartClasses(){
+  const labels = ['8,0–9,9','10,0–11,9','12,0–13,9','14,0–15,9','16,0–17,9','18,0–19,9'];
+  const cnt = [0,1,2,3,4,5].map(k => nIn(8 + 2 * k, 10 + 2 * k)), mx = 12, base = 262;
+  let g = svgOpen;
+  [0, 4, 8, 12].forEach(t => g += '<line class="gl" x1="40" x2="585" y1="'+(base - t / mx * 215)+'" y2="'+(base - t / mx * 215)+'"/><text class="t2" x="32" y="'+(base - t / mx * 215 + 5)+'" font-size="14" text-anchor="end">'+t+'</text>');
+  cnt.forEach((c, k) => {
+    const x = 56 + k * 90, h = c / mx * 215, hi = k === 5, col = hi ? '#0B7A84' : '#8FA6C0';
+    g += '<rect x="'+x+'" y="'+(base - h)+'" width="64" height="'+h+'" rx="4" fill="'+col+'"/>'
+      + '<text class="'+(hi?'':'t')+'" '+(hi?'fill="#0B7A84"':'')+' x="'+(x+32)+'" y="'+(base - h - (hi ? 26 : 8))+'" font-size="'+(hi?20:17)+'" font-weight="800" text-anchor="middle">'+c+(hi?' años':'')+'</text>'
+      + (hi ? '<text fill="#0B7A84" x="'+(x+32)+'" y="'+(base - h - 8)+'" font-size="17" font-weight="800" text-anchor="middle">('+fmt(c / N * 100,0)+' %)</text>' : '')
+      + '<text class="t2" x="'+(x+32)+'" y="286" font-size="13" text-anchor="middle">'+labels[k]+'</text>';
+  });
+  return g + '<line class="ax" x1="40" x2="585" y1="'+base+'" y2="'+base+'"/><text class="t2" x="312" y="318" font-size="14" text-anchor="middle">Clase de tasa de natalidad (años en cada clase)</text></svg>';
+}
+function chartVar(){
+  const z = 105, k = 58, step = 540 / 24, x = i => 44 + (i - 1) * step;
+  let g = svgOpen;
+  [-2, -1, 0, 1].forEach(t => g += '<line class="'+(t===0?'ax':'gl')+'" x1="40" x2="590" y1="'+(z - t * k)+'" y2="'+(z - t * k)+'"/><text class="t2" x="32" y="'+(z - t * k + 5)+'" font-size="13" text-anchor="end">'+(t>0?'+':'')+t+'</text>');
+  for (let i = 1; i < N; i++){
+    const d = diffs[i], h = Math.abs(d) * k, col = d < 0 ? '#C73E14' : d > 0 ? '#0B7A84' : '#E9A000';
+    g += '<rect x="'+x(i)+'" y="'+(d >= 0 ? z - h : z)+'" width="'+(step - 5)+'" height="'+Math.max(h, 3)+'" rx="2" fill="'+col+'" '+(i >= N - run ? '' : 'opacity=".45"')+'/>';
+  }
+  [2001, 2005, 2010, 2015, 2020, 2024].forEach(yr => g += '<text class="t2" x="'+(x(Y.indexOf(yr)) + (step - 5) / 2)+'" y="262" font-size="13" text-anchor="middle">'+yr+'</text>');
+  const a = x(N - run), b = x(N - 1) + step - 5;
+  g += '<path d="M'+a+' 276 v8 H'+b+' v-8" fill="none" stroke="#C73E14" stroke-width="3.5"/><text x="'+((a + b) / 2)+'" y="308" font-size="19" font-weight="800" fill="#C73E14" text-anchor="middle">'+run+' descensos seguidos</text>';
+  return g + '</svg>';
+}
+
+/* ---------- rondas ---------- */
+const opt = (t, ok) => ({ t, ok });
+const ROUNDS = [
+  { q:'La media de la tasa de natalidad de Argentina, ¿es mayor, menor o igual que la mediana?',
+    evT:'Los 25 años de Argentina (cada punto es un año), con su media y su mediana', chart:chartDots,
+    opts:[opt('Menor que la mediana', mA < medA - 1e-9), opt('Mayor que la mediana', mA > medA + 1e-9), opt('Igual a la mediana', Math.abs(mA - medA) <= 1e-9)],
+    note:'La media es '+fmt(mA,2)+' y la mediana '+fmt(medA,1)+'. Los años recientes, con tasas muy bajas, tiran del promedio hacia abajo, pero casi no mueven la mediana. Es una asimetría hacia los valores bajos.' },
+  { q:'¿En qué año fue más alta la tasa de natalidad de Argentina?',
+    evT:'Tasa de natalidad de Argentina, 2000–2024', chart:chartLine,
+    opts:[2000, 2004, 2012, 2018].map(v => opt(String(v), v === maxY)),
+    note:'En '+maxY+' la tasa llegó a '+fmt(maxV,1)+'. El mínimo fue '+fmt(minV,1)+' en '+minY+': un rango de '+fmt(maxV - minV,1)+' puntos entre el mayor y el menor valor.' },
+  { q:'¿Qué jurisdicción tuvo la tasa de natalidad media más alta entre 2000 y 2024?',
+    evT:'Tasa media 2000–2024: las 5 mayores y las 3 menores de las 24 jurisdicciones', chart:chartRank,
+    opts:['buenos_aires', 'cordoba', 'ciudad_autonoma_de_buenos_aires', 'misiones'].map(k => opt(NAMES[k], k === rank[0][0])),
+    note:NAMES[rank[0][0]]+' tiene la media más alta ('+fmt(rank[0][1],2)+'). Le siguen '+NAMES[rank[1][0]]+' ('+fmt(rank[1][1],2)+') y '+NAMES[rank[2][0]]+' ('+fmt(rank[2][1],2)+'). La más baja es '+NAMES[rank[rank.length-1][0]]+' ('+fmt(rank[rank.length-1][1],2)+').' },
+  { q:'¿Qué porcentaje de los 25 años tuvo una tasa de natalidad de entre 18,0 y 19,9?',
+    evT:'Años de Argentina en cada clase de tasa', chart:chartClasses,
+    opts:[12, 28, 44, 60].map(v => opt(v+' %', Math.round(pct) === v)),
+    note:'Son '+nIn(18,20)+' de '+N+' años: el '+fmt(pct,0)+' %. Es la clase modal de la tabla de frecuencias. En el otro extremo, '+nLow+' años ('+fmt(nLow / N * 100,0)+' %) tuvieron tasas menores a 16.' },
+  { q:'¿Cuántos años seguidos, hasta 2024, bajó la tasa de natalidad de Argentina?',
+    evT:'Variación de la tasa respecto del año anterior (puntos por 1.000 hab.)', chart:chartVar,
+    opts:[14, 10, 7, 4].map(v => opt(v+' años', v === run)),
+    note:'Bajó todos los años desde '+runFrom+' hasta 2024: '+run+' descensos consecutivos. La mayor caída en un año fue la de '+Y[worstI]+' ('+fmt(diffs[worstI],1)+' puntos).' }
+];
+
+const ICON = {
+  ok:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M7 12.5l3.2 3.2L17 9"/></svg>',
+  no:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M8.5 8.5l7 7M15.5 8.5l-7 7"/></svg>',
+  lock:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4.5" y="10.5" width="15" height="10" rx="2"/><path d="M8 10.5V8a4 4 0 0 1 8 0v2.5"/></svg>'
+};
+const L = 'ABCD';
+const state = { view:'start', i:0, answers:[], revealed:false };
+const okIdx = r => r.opts.findIndex(o => o.ok);
+
+function startHTML(){
+  return '<section class="hero"><h1>Adiviná antes de ver</h1>'
+    + '<p class="lede">Preguntamos primero y mostramos después. El público apuesta, y recién entonces se destapan los datos reales de la natalidad argentina.</p></section>'
+    + '<div class="demo" aria-hidden="true">'+ICON.lock+'<span>Datos tapados</span></div>'
+    + '<ol class="how"><li>Leé la pregunta en voz alta.</li><li>El público elige una opción, levantando la mano.</li><li>Tocá la opción de la mayoría y se destapan los datos.</li></ol>'
+    + '<div class="row-actions"><button class="btn big" data-action="start" id="startBtn">Empezar las 5 rondas</button></div>'
+    + '<p class="src">Tasa de natalidad por 1.000 habitantes. Fuente: DEIS, archivo tasa-natalidad-deis-2000-2024.csv.</p>';
+}
+function roundHTML(){
+  const r = ROUNDS[state.i], a = state.answers[state.i], rev = state.revealed, good = okIdx(r);
+  let opts = '';
+  r.opts.forEach((o, k) => {
+    let cls = 'opt', mark = '', tag = '';
+    if (rev){
+      if (k === good){ cls += ' ok'; mark = ICON.ok; }
+      else if (k === a.pick){ cls += ' no'; mark = ICON.no; }
+      else cls += ' dim';
+      if (k === a.pick) tag = '<span class="tag">Votó el público</span>';
+    }
+    opts += '<button class="'+cls+'" data-action="pick" data-k="'+k+'" '+(rev?'disabled':'')+' aria-label="Opción '+L[k]+': '+o.t+'"><span class="ltr">'+L[k]+'</span><span>'+o.t+'</span>'+tag+'<span class="mark">'+mark+'</span></button>';
+  });
+  let h = '<h2 class="q" style="margin:0">'+r.q+'</h2>'
+    + '<div class="play"><div class="opts"><p class="opts-cap">'+(rev ? 'Respuesta del público y respuesta correcta' : 'Tocá la opción que eligió la mayoría del público')+'</p>'+opts+'</div>'
+    + '<div class="evi'+(rev?' open snap':'')+'" id="evi"><h2>'+r.evT+'</h2><div '+(rev?'':'aria-hidden="true"')+'>'+r.chart()+'</div>'
+    + '<div class="cover" aria-hidden="'+(rev?'true':'false')+'">'+ICON.lock+'<b>Datos tapados</b><span>Se destapan cuando el público apuesta.</span></div></div></div>';
+  if (rev){
+    const last = state.i === ROUNDS.length - 1;
+    h += '<div class="result '+(a.ok?'ok':'no')+'" role="status"><div><p class="verdict">'+(a.ok?ICON.ok:ICON.no)+(a.ok?'El público acertó':'El público falló')+'</p>'
+      + '<p class="answer">Respuesta correcta: <b>'+L[good]+'. '+r.opts[good].t+'</b></p></div>'
+      + '<p class="note">'+r.note+'</p>'
+      + '<button class="btn" data-action="next" id="nextBtn">'+(last?'Ver resultado':'Siguiente ronda')+'</button></div>';
+  }
+  return h;
+}
+function endHTML(){
+  const hits = state.answers.filter(x => x.ok).length;
+  const msg = hits === ROUNDS.length ? 'El público adivinó todo.' : hits >= 3 ? 'El público intuyó bien los datos.' : 'Los datos sorprendieron al público.';
+  let rows = '';
+  ROUNDS.forEach((r, k) => {
+    const a = state.answers[k], g = okIdx(r);
+    rows += '<li><span class="k">'+(k+1)+'</span><span>'+r.q+' <b>'+r.opts[g].t+'.</b></span><span class="v '+(a.ok?'ok':'no')+'">'+(a.ok?ICON.ok:ICON.no)+(a.ok?'Acertó':'Eligió '+r.opts[a.pick].t)+'</span></li>';
+  });
+  return '<div class="final"><span class="n">'+hits+' de '+ROUNDS.length+'</span><span class="tt">'+msg+'</span></div><ul class="recap">'+rows+'</ul>'
+    + '<div class="row-actions"><button class="btn" data-action="again">Jugar de nuevo</button><button class="btn light" data-action="home">Volver al inicio</button></div>';
+}
+function header(){
+  const seg = [];
+  for (let k = 0; k < ROUNDS.length; k++){ const a = state.answers[k]; seg.push('<span class="seg '+(a ? (a.ok?'ok':'no') : (state.view==='round' && k===state.i ? 'cur' : ''))+'"></span>'); }
+  document.getElementById('progress').innerHTML = seg.join('');
+  const done = state.answers.filter(Boolean), hits = done.filter(x => x.ok).length;
+  document.getElementById('score').innerHTML = done.length ? 'Aciertos <b>'+hits+'</b> de '+done.length : '';
+}
+function render(animate){
+  const st = document.getElementById('stage');
+  st.innerHTML = state.view==='start' ? startHTML() : state.view==='round' ? roundHTML() : endHTML();
+  header();
+  if (state.view==='round' && state.revealed){
+    const e = document.getElementById('evi');
+    if (animate){ e.classList.remove('open'); void e.offsetWidth; e.classList.remove('snap'); void e.offsetWidth; e.classList.add('open'); }
+    const b = document.getElementById('nextBtn'); if (b) b.focus({ preventScroll:true });
+  }
+  window.scrollTo(0, 0);
+}
+function pick(k){
+  if (state.view!=='round' || state.revealed) return;
+  const r = ROUNDS[state.i];
+  if (k < 0 || k >= r.opts.length) return;
+  state.answers[state.i] = { pick:k, ok:r.opts[k].ok };
+  state.revealed = true;
+  render(true);
+}
+function next(){
+  if (state.view!=='round' || !state.revealed) return;
+  if (state.i === ROUNDS.length - 1) state.view = 'end'; else { state.i++; state.revealed = false; }
+  render();
+}
+function begin(){ state.answers = []; state.i = 0; state.revealed = false; state.view = 'round'; render(); }
+
+document.getElementById('stage').addEventListener('click', e => {
+  const t = e.target.closest('[data-action]'); if (!t) return;
+  const a = t.dataset.action;
+  if (a==='start' || a==='again') begin();
+  else if (a==='pick') pick(+t.dataset.k);
+  else if (a==='next') next();
+  else if (a==='home'){ state.view='start'; state.answers=[]; render(); }
+});
+document.addEventListener('keydown', e => {
+  const k = e.key.toLowerCase();
+  if (state.view==='round' && !state.revealed){
+    const i = 'abcd'.indexOf(k); if (i >= 0) pick(i);
+    else if ('1234'.includes(k) && k.length === 1) pick(+k - 1);
+  } else if (state.view==='round' && state.revealed){
+    if (e.target.closest && e.target.closest('button') && (k==='enter' || k===' ')) return;
+    if (k==='enter' || k===' ' || k==='arrowright'){ e.preventDefault(); next(); }
+  }
+});
+render();
+</script>
+</body>
+</html>
